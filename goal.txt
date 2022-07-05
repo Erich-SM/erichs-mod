@@ -1,0 +1,24 @@
+math funcs in asm (fasm)
+comp with tcc
+
+SDL graphics in C
+
+multiplayer, and server w/ anti-cheat
+
+raycasting
+
+ERIch's mod
+(Erich's Raycasting Interface)
+
+MAKE EXTREMELY MODABLE
+
+water physics
+guns
+walls
+sprites
+
+easter eggs, secret codes
+make a terminal, use tcc interp to inject code
+(^ or make a custom interp)
+
+make really portable
