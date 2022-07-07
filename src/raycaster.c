@@ -145,6 +145,8 @@ main(void)
 
                         double sideDistX, sideDistY; // length of ray from curr pos
 
+                        // I would make this function is assembler but I hate floats. 
+                        // might make this integer raycasting not floating point for portabilty
                         double deltaDistX = (rayDirX == 0) ? INFINITY : fabs(1 / rayDirX);
                         double deltaDistY = (rayDirY == 0) ? INFINITY : fabs(1 / rayDirY);
 
@@ -185,11 +187,13 @@ main(void)
                                 if(worldMap[mapX][mapY] > 0) hit = 1;
                         }
 
+
                         if(side == 0) perpWallDist = (sideDistX - deltaDistX);
                         else          perpWallDist = (sideDistY - deltaDistY);
 
                         int lineHeight = (int)(screenHeight / perpWallDist);
 
+                        // these are asm-able things
                         int drawStart = -lineHeight / 2 + screenHeight / 2;
                         if(drawStart < 0) drawStart = 0;
                         int drawEnd = lineHeight / 2 + screenHeight / 2;
@@ -218,8 +222,8 @@ main(void)
                 SDL_Delay(time_left(next_time));
                 next_time += TICK_INTERVAL;
 
-                double moveSpeed = 3.0;
-                double rotSpeed =  1.0;
+                double moveSpeed = 2.0;
+                double rotSpeed =  0.5;
 
                 SDL_Event event;
 
