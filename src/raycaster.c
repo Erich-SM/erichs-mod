@@ -1,18 +1,13 @@
 /****** DEFINES / INCLUDES ******/
 // video funcs
-#define SDL_DISABLE_IMMINTRIN_H
-#include <SDL2/SDL.h>
+#define SURFACE
+#include "renderer/render.h"
 // tcc lib is the builtin c lib
 //#include <tcclib.h>
+#include <stdint.h>
 #include <stdio.h>
 
-
-#define screenWidth  1280
-#define screenHeight 960
-#define mapWidth  24
-#define mapHeight 24
-
-#define TICK_INTERVAL 30
+const Uint8 *inkeys = 0;
 
 // TODO: map parsing
 int worldMap[mapWidth][mapHeight]=
@@ -43,73 +38,18 @@ int worldMap[mapWidth][mapHeight]=
   {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}
 };
 
-typedef struct ColorRGB {
-        int r, g, b;
-} ColorRGB;
+void
+read_keys()
+{
+        SDL_PumpEvents();
+        inkeys = SDL_GetKeyboardState(NULL);
+}
 
-static const ColorRGB RGB_Black     = {  0,   0,   0};
-static const ColorRGB RGB_Red       = {255,   0,   0};
-static const ColorRGB RGB_Green     = {  0, 255,   0};
-static const ColorRGB RGB_Blue      = {  0,   0, 255};
-static const ColorRGB RGB_Cyan      = {  0, 255, 255};
-static const ColorRGB RGB_Magenta   = {255,   0, 255};
-static const ColorRGB RGB_Yellow    = {255, 255,   0};
-static const ColorRGB RGB_White     = {255, 255, 255};
-static const ColorRGB RGB_Gray      = {128, 128, 128};
-static const ColorRGB RGB_Grey      = {192, 192, 192};
-static const ColorRGB RGB_Maroon    = {128,   0,   0};
-static const ColorRGB RGB_Darkgreen = {  0, 128,   0};
-static const ColorRGB RGB_Navy      = {  0,   0, 128};
-static const ColorRGB RGB_Teal      = {  0, 128, 128};
-static const ColorRGB RGB_Purple    = {128,   0, 128};
-static const ColorRGB RGB_Olive     = {128, 128,   0};
-
-//Fast vertical line from (x,y1) to (x,y2), with rgb color
 int
-verLine(int x, int y1, int y2, unsigned int color, SDL_Surface *scr)
+key_down(Uint8 key) //this checks if the key is held down, returns true all the time until the key is up
 {
-  if(y2 < y1) {y1 += y2; y2 = y1 - y2; y1 -= y2;} //swap y1 and y2
-  if(y2 < 0 || y1 >= screenHeight  || x < 0 || x >= screenWidth) return 0; //no single point of the line is on screen
-  if(y1 < 0) y1 = 0; //clip
-  if(y2 >= screenWidth) y2 = screenHeight - 1; //clip
-
-  unsigned int *bufp;
-
-  bufp = (Uint32*)scr->pixels + y1 * scr->pitch / 4 + x;
-  unsigned add = scr->pitch / 4;
-  for(int y = y1; y <= y2; y++)
-  {
-     *bufp = color;
-     bufp += add;
-  }
-  return 1;
-}
-
-static int
-keyDown(SDL_Event *event, int code)
-{
-        switch(event->type){
-                case SDL_KEYDOWN:
-                        if(event->key.keysym.scancode == code){
-                                return 1;
-                        } else {
-                                return 0;
-                        }
-                default:
-                        return 0; 
-        }
-}
-
-unsigned int
-time_left(unsigned int next_time)
-{
-        unsigned int now;
-
-        now = SDL_GetTicks();
-        if(next_time <= now)
-                return 0;
-        else
-                return next_time - now;
+        if(!inkeys) return 0;
+        return (inkeys[key] != 0);
 }
 
 int
@@ -120,6 +60,8 @@ main(void)
         double planeX = 0, planeY = 0.66; // camera plane
 
         unsigned int next_time = SDL_GetTicks() + TICK_INTERVAL;
+
+        unsigned int drawterm = 0;
 
         /* NOTE FOR PATCHERS!!!
          * Try to keep SDL2/1 to a minimun, this game aims to be portable and SDL1 might be
@@ -208,10 +150,10 @@ main(void)
                                 default: color = RGB_Yellow; break;
                         }
 
-                        if(side == 1) {color.b / 2; color.g / 2; color.r / 2;}
+                        if(side == 1) {color.b /= 2; color.g /= 2; color.r /= 2;}
 
                         unsigned int colorSDL = SDL_MapRGB(surface->format, color.r, color.g, color.b);
-                        verLine(x, drawStart, drawEnd, colorSDL, surface);
+                        ver_line(x, drawStart, drawEnd, colorSDL, surface);
                 }
 
                 SDL_UpdateWindowSurface(window);
@@ -222,26 +164,27 @@ main(void)
                 SDL_Delay(time_left(next_time));
                 next_time += TICK_INTERVAL;
 
-                double moveSpeed = 2.0;
-                double rotSpeed =  0.5;
+                double moveSpeed = 0.08;
+                double rotSpeed =  0.05;
 
-                SDL_Event event;
+                read_keys();
 
-                SDL_PollEvent(&event);                
-
-                //move forward if no wall in front of you
-                // add much better collision
-                if(keyDown(&event, SDL_SCANCODE_W)){
+                if(key_down(SDLK_LSHIFT)){
+                        printf("Drawing term\n");
+                        if(drawterm == 0)
+                                drawterm = 1;
+                        else
+                                drawterm = 0;
+                }
+                if(key_down(SDLK_UP)){
                         if(worldMap[(int)(posX + dirX * moveSpeed)][(int)(posY)] == 0) posX += dirX * moveSpeed;
                         if(worldMap[(int)(posX)][(int)(posY + dirY * moveSpeed)] == 0) posY += dirY * moveSpeed;
                 }
-                //move backwards if no wall behind you
-                if(keyDown(&event, SDL_SCANCODE_S)){
+                if(key_down(SDLK_DOWN)){
                         if(worldMap[(int)(posX - dirX * moveSpeed)][(int)(posY)] == 0) posX -= dirX * moveSpeed;
                         if(worldMap[(int)(posX)][(int)(posY - dirY * moveSpeed)] == 0) posY -= dirY * moveSpeed;
                 }
-                //rotate to the right
-                if(keyDown(&event, SDL_SCANCODE_D)){
+                if(key_down(SDLK_RIGHT)){
                         //both camera direction and camera plane must be rotated
                         double oldDirX = dirX;
                         dirX = dirX * cos(-rotSpeed) - dirY * sin(-rotSpeed);
@@ -250,8 +193,7 @@ main(void)
                         planeX = planeX * cos(-rotSpeed) - planeY * sin(-rotSpeed);
                         planeY = oldPlaneX * sin(-rotSpeed) + planeY * cos(-rotSpeed);
                 }
-                //rotate to the left
-                if(keyDown(&event, SDL_SCANCODE_A)){
+                if(key_down(SDLK_LEFT)){
                         //both camera direction and camera plane must be rotated
                         double oldDirX = dirX;
                         dirX = dirX * cos(rotSpeed) - dirY * sin(rotSpeed);
